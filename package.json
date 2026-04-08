@@ -11,8 +11,10 @@
     "build": "tsc",
     "dev": "tsx src/index.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
   },
+  "files": ["dist", "bin"],
   "keywords": [
     "claude",
     "openrouter",
