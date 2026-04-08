@@ -23,8 +23,10 @@ async function main(): Promise<void> {
   const extraArgs = process.argv.slice(2);
   const exitCode = await launchClaude({
     apiKey,
-    mainModel: selection.mainModel,
-    smallModel: selection.smallModel,
+    opusModel: selection.opusModel,
+    sonnetModel: selection.sonnetModel,
+    haikuModel: selection.haikuModel,
+    subagentModel: selection.subagentModel,
     extraArgs,
   });
 

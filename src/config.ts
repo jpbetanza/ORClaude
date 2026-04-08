@@ -7,18 +7,21 @@ import chalk from "chalk";
 const CONFIG_DIR = resolve(homedir(), ".orclaude");
 const CONFIG_PATH = resolve(CONFIG_DIR, "config.json");
 
+export interface SavedModels {
+  opusModel: string;
+  sonnetModel: string;
+  haikuModel: string;
+  subagentModel: string | null;
+}
+
 interface Config {
   apiKey: string;
+  models?: SavedModels;
 }
 
 async function loadConfigFile(): Promise<string | null> {
-  try {
-    const raw = await readFile(CONFIG_PATH, "utf-8");
-    const config: Config = JSON.parse(raw);
-    return config.apiKey || null;
-  } catch {
-    return null;
-  }
+  const config = await loadConfig();
+  return config?.apiKey || null;
 }
 
 async function validateApiKey(key: string): Promise<boolean> {
@@ -58,9 +61,33 @@ async function promptForApiKey(): Promise<string> {
   return trimmed;
 }
 
-export async function saveApiKey(key: string): Promise<void> {
+async function loadConfig(): Promise<Config | null> {
+  try {
+    const raw = await readFile(CONFIG_PATH, "utf-8");
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+async function saveConfig(updates: Partial<Config>): Promise<void> {
   await mkdir(CONFIG_DIR, { recursive: true });
-  await writeFile(CONFIG_PATH, JSON.stringify({ apiKey: key }, null, 2));
+  const existing = await loadConfig() || {} as Config;
+  const merged = { ...existing, ...updates };
+  await writeFile(CONFIG_PATH, JSON.stringify(merged, null, 2));
+}
+
+export async function saveApiKey(key: string): Promise<void> {
+  await saveConfig({ apiKey: key });
+}
+
+export async function getSavedModels(): Promise<SavedModels | null> {
+  const config = await loadConfig();
+  return config?.models || null;
+}
+
+export async function saveModels(models: SavedModels): Promise<void> {
+  await saveConfig({ models });
 }
 
 export async function getApiKey(): Promise<string> {

@@ -1,10 +1,14 @@
 import search from "@inquirer/search";
+import confirm from "@inquirer/confirm";
 import chalk from "chalk";
 import { type Model, formatModelChoice } from "./models.js";
+import { type SavedModels, getSavedModels, saveModels } from "./config.js";
 
 export interface ModelSelection {
-  mainModel: string;
-  smallModel: string | null;
+  opusModel: string;
+  sonnetModel: string;
+  haikuModel: string;
+  subagentModel: string | null;
 }
 
 async function pickModel(
@@ -35,28 +39,65 @@ async function pickModel(
   }
 }
 
+function printSelection(selection: ModelSelection): void {
+  console.log(chalk.bold("\n✓ Configuration:"));
+  console.log(`  Opus model:     ${chalk.cyan(selection.opusModel)}`);
+  console.log(`  Sonnet model:   ${chalk.cyan(selection.sonnetModel)}`);
+  console.log(`  Haiku model:    ${chalk.cyan(selection.haikuModel)}`);
+  if (selection.subagentModel) {
+    console.log(`  Subagent model: ${chalk.cyan(selection.subagentModel)}`);
+  } else {
+    console.log(`  Subagent model: ${chalk.dim("(skipped)")}`);
+  }
+  console.log();
+}
+
 export async function selectModels(models: Model[]): Promise<ModelSelection> {
+  // Check for saved model selections
+  const saved = await getSavedModels();
+  if (saved) {
+    console.log(chalk.bold("\n📋 Last used models:"));
+    printSelection(saved);
+
+    const reuse = await confirm({
+      message: "Use these models again?",
+      default: true,
+    });
+
+    if (reuse) {
+      return saved;
+    }
+  }
+
   console.log(chalk.bold("\n🔍 Model Selection\n"));
 
-  const mainModel = await pickModel("main model", models);
-  if (!mainModel) {
-    console.log(chalk.red("Main model is required. Exiting."));
+  const opusModel = await pickModel("opus model (primary)", models);
+  if (!opusModel) {
+    console.log(chalk.red("Opus model is required. Exiting."));
+    process.exit(1);
+  }
+
+  const sonnetModel = await pickModel("sonnet model (default)", models);
+  if (!sonnetModel) {
+    console.log(chalk.red("Sonnet model is required. Exiting."));
+    process.exit(1);
+  }
+
+  const haikuModel = await pickModel("haiku model (fast/cheap)", models);
+  if (!haikuModel) {
+    console.log(chalk.red("Haiku model is required. Exiting."));
     process.exit(1);
   }
 
   console.log(
-    chalk.dim("\nPress Esc or Ctrl+C to skip small model selection.\n")
+    chalk.dim("\nPress Esc or Ctrl+C to skip subagent model selection.\n")
   );
-  const smallModel = await pickModel("small model", models);
+  const subagentModel = await pickModel("subagent model", models);
 
-  console.log(chalk.bold("\n✓ Configuration:"));
-  console.log(`  Main model:  ${chalk.cyan(mainModel)}`);
-  if (smallModel) {
-    console.log(`  Small model: ${chalk.cyan(smallModel)}`);
-  } else {
-    console.log(`  Small model: ${chalk.dim("(skipped)")}`);
-  }
-  console.log();
+  const selection: ModelSelection = { opusModel, sonnetModel, haikuModel, subagentModel };
 
-  return { mainModel, smallModel };
+  printSelection(selection);
+  await saveModels(selection);
+
+  return selection;
 }
